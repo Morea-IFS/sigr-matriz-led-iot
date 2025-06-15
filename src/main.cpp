@@ -1,151 +1,192 @@
-
-#include <Adafruit_GFX.h>
+#include <Arduino.h>
+#include <ESP8266WiFi.h>  
+#include <WiFiClient.h>
+#include <ArduinoJson.h>
 #include <Adafruit_NeoMatrix.h>
-#include <Adafruit_NeoPixel.h>
+#include <Adafruit_GFX.h>
 
+// ========== CONFIGURAÇÕES ========== //
+const char* ssid = "rpi";
+const char* password = "12345678";
+const char* server = "192.168.10.148";  
+const int port = 8000;
 
-// Which pin on the Arduino is connected to the NeoPixels?
-#define PIN 5
-
-// Max is 255, 32 is a conservative value to not overload
-// a USB power supply (500mA) for 12x12 pixels.
-#define BRIGHTNESS 96
-
-// Define matrix width and height.
-#define mw 16
-#define mh 16
-
-#define LED_BLACK    0
-
-int counter = 0;
-int bilderanzahl = 0;
-
-// When we setup the NeoPixel library, we tell it how many pixels, and which pin to use to send signals.
-// Note that for older NeoPixel strips you might need to change the third parameter--see the strandtest
-// example for more information on possible values.
-Adafruit_NeoMatrix *matrix = new Adafruit_NeoMatrix(mw, mh, PIN,
-    NEO_MATRIX_TOP     + NEO_MATRIX_LEFT +
-    NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG,
-    NEO_GRB            + NEO_KHZ800);
-    
-static const uint16_t PROGMEM
-// These bitmaps were written for a backend that only supported
-// 4 bits per color with Blue/Green/Red ordering while neomatrix
-// uses native 565 color mapping as RGB.
-// I'm leaving the arrays as is because it's easier to read
-// which color is what when separated on a 4bit boundary
-// The demo code will modify the arrays at runtime to be compatible
-// with the neomatrix color ordering and bit depth.
-
-
-RGB_bmp[][256] = {
-{
-	0x0000, 0x0000, 0x0000, 0x0000, 0xc140, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9c0, 0xb900, 0x8900, 0x9120, 0x0000, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0x0000, 0x7100, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9a0, 0x0000, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0x0000, 0x8aa0, 0xabe0, 0xabe0, 0xb400, 0xfd08, 0xfd08, 0xb400, 0xfd08, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0x5220, 0xb400, 0xfd08, 0xb400, 0xfd08, 0xfd08, 0xfd08, 0xbc01, 0xfd08, 0xfd08, 0xfd08, 0xbba6, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0x5220, 0xb400, 0xf4e7, 0xb400, 0xbc01, 0xfd08, 0xfd08, 0xf4e7, 0xb400, 0xfd08, 0xfd08, 0xfd08, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0x5220, 0xabe0, 0xb400, 0xfd08, 0xfd08, 0xfd08, 0xfd08, 0xabe0, 0xabe0, 0xabe0, 0xabe0, 0x0000, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0x0000, 0x0000, 0xbc42, 0xfd08, 0xfd08, 0xfd08, 0xfd08, 0xfd08, 0xfd08, 0xfd08, 0x0000, 0x0000, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0x0000, 0x8b20, 0xabe0, 0xb3c0, 0xf1e0, 0xabe0, 0xabe0, 0xb3c0, 0xcc42, 0xcc44, 0x9362, 0x0000, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0x8b20, 0xabe0, 0xabe0, 0xb3c0, 0xf1e0, 0xb3c0, 0xb3a0, 0xf1e0, 0xabe0, 0xabe0, 0xabe0, 0x8b20, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0xabe0, 0xabe0, 0xabe0, 0xb3c0, 0xf9c0, 0xf9c0, 0xf9c0, 0xf1e0, 0xabe0, 0xabe0, 0xabe0, 0xabe0, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0xfd08, 0xfd08, 0xb3c0, 0xf9e0, 0xfce8, 0xf9c0, 0xf9e0, 0xfce8, 0xf1e0, 0xb400, 0xfd08, 0xfd08, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0xfd08, 0xfd08, 0xfca7, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9e0, 0xfce8, 0xfd08, 0xfd08, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0xfd08, 0xfcc8, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9a0, 0xf9c0, 0xf9c0, 0xf9c0, 0xf9e0, 0xfd08, 0xfd08, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0x0000, 0xcb22, 0xf9c0, 0xf9c0, 0xf9a0, 0x0000, 0xa900, 0xf9c0, 0xf9c0, 0xf9c0, 0x0000, 0x0000, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0x8b20, 0xabe0, 0xabe0, 0xabe0, 0x0000, 0x0000, 0x0000, 0x9a20, 0xabe0, 0xabe0, 0xabe0, 0x0000, 0x0000, 0x0000, 
-	0x0000, 0x0000, 0xabe0, 0xabe0, 0xabe0, 0xabe0, 0x0000, 0x0000, 0x0000, 0x5220, 0xabe0, 0xabe0, 0xabe0, 0xabe0, 0x0000, 0x0000
-}
-};
-
-// Convert a BGR 4/4/4 bitmap to RGB 5/6/5 used by Adafruit_GFX
-void fixdrawRGBBitmap(int16_t x, int16_t y, const uint16_t *bitmap, int16_t w, int16_t h) {
-  uint16_t RGB_bmp_fixed[w * h];
-  for (uint16_t pixel = 0; pixel < w * h; pixel++) {
-    uint8_t r, g, b;
-    uint16_t color = pgm_read_word(bitmap + pixel);
-
-    //Serial.print(color, HEX);
-    b = (color & 0xF00) >> 8;
-    g = (color & 0x0F0) >> 4;
-    r = color & 0x00F;
-    //Serial.print(" ");
-    //Serial.print(b);
-    //Serial.print("/");
-    //Serial.print(g);
-    //Serial.print("/");
-    //Serial.print(r);
-    //Serial.print(" -> ");
-    // expand from 4/4/4 bits per color to 5/6/5
-    b = map(b, 0, 15, 0, 31);
-    g = map(g, 0, 15, 0, 63);
-    r = map(r, 0, 15, 0, 31);
-    //Serial.print(r);
-    //Serial.print("/");
-    //Serial.print(g);
-    //Serial.print("/");
-    //Serial.print(b);
-    RGB_bmp_fixed[pixel] = (r << 11) + (g << 5) + b;
-   // Serial.print(" -> ");
-    //Serial.print(pixel);
-    //Serial.print(" -> ");
-    //Serial.println(RGB_bmp_fixed[pixel], HEX);
-  }
-  matrix->drawRGBBitmap(x, y, RGB_bmp_fixed, w, h);
-}
-
-void display_rgbBitmap(uint8_t bmp_num) {
-  static uint16_t bmx, bmy;
-
-  matrix->drawRGBBitmap(bmx, bmy, RGB_bmp[bmp_num], 16, 16);
-  bmx += 16;
-  if (bmx >= mw) bmx = 0;
-  if (!bmx) bmy += 16;
-  if (bmy >= mh) bmy = 0;
-  matrix->show();
-}
-
-
-
+// Configuração da Matriz LED
+#define MATRIX_PIN 5      
+#define MATRIX_WIDTH 16   
+#define MATRIX_HEIGHT 16  
+#define BRIGHTNESS 50     
+// ========== INICIALIZAÇÃO ========== //
+Adafruit_NeoMatrix matrix = Adafruit_NeoMatrix(
+  MATRIX_WIDTH, MATRIX_HEIGHT, MATRIX_PIN,
+  NEO_MATRIX_TOP + NEO_MATRIX_LEFT +
+  NEO_MATRIX_ROWS + NEO_MATRIX_ZIGZAG,
+  NEO_GRB + NEO_KHZ800);
+void connectToWiFi();
+void startupAnimation();
+void fetchAndDisplayPattern();
+void showErrorAnimation();
+// ========== SETUP ========== //
 void setup() {
   Serial.begin(115200);
+  while (!Serial);  
 
-  matrix->begin();
-  matrix->setTextWrap(false);
-  matrix->setBrightness(BRIGHTNESS);
-  // Test full bright of all LEDs. If brightness is too high
-  // for your current limit (i.e. USB), decrease it.
-  //matrix->fillScreen(LED_WHITE_HIGH);
-  //matrix->show();
-  //delay(1000);
-  matrix->clear();
-  bilderanzahl=(sizeof(RGB_bmp) / sizeof(RGB_bmp[0]));
-  Serial.print("Anzahl Bilder: ");
-  Serial.println(bilderanzahl);
+  matrix.begin();
+  matrix.setBrightness(BRIGHTNESS);
+  matrix.fillScreen(0);
+  matrix.show();
+ 
+  startupAnimation();
+  
+  connectToWiFi();
 }
 
-
-
+// ========== LOOP PRINCIPAL ========== //
 void loop() {
-
-  // clear the screen after X bitmaps have been displayed and we
-  // loop back to the top left corner
-  // 8x8 => 1, 16x8 => 2, 17x9 => 6
-  static uint8_t pixmap_count = ((mw + 15) / 8) * ((mh + 15) / 8);
-  // Cycle through red, green, blue, display 2 checkered patterns
-  // useful to debug some screen types and alignment.
-
-  Serial.print("Screen pixmap capacity: ");
-  Serial.println(pixmap_count);
-
-  display_rgbBitmap(counter++);
-  delay(500);
-
-  if (counter >=bilderanzahl){
-    counter = 0;
+  static unsigned long lastUpdate = 0;
+  const unsigned long updateInterval = 10;  
+  
+  if (millis() - lastUpdate >= updateInterval) {
+    lastUpdate = millis();
+    
+    if (WiFi.status() == WL_CONNECTED) {
+      fetchAndDisplayPattern();
+    } else {
+      Serial.println("WiFi desconectado. Reconectando...");
+      connectToWiFi();
+    }
   }
+}
 
-  Serial.println ("----------------------------------------------------------------");
-  //delay(1000);
+// ========== FUNÇÕES ========== //
+
+
+void connectToWiFi() {
+  Serial.print("Conectando a ");
+  Serial.println(ssid);
+  
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+    matrix.drawPixel(random(MATRIX_WIDTH), random(MATRIX_HEIGHT), matrix.Color(0, 0, 50));
+    matrix.show();
+  }
+  
+  Serial.println("");
+  Serial.println("WiFi conectado");
+  Serial.print("IP: ");
+  Serial.println(WiFi.localIP());
+
+  matrix.fillScreen(0);
+  for (int i = 0; i < MATRIX_WIDTH; i++) {
+    matrix.drawPixel(i, i, matrix.Color(0, 50, 0));
+    matrix.show();
+    delay(50);
+  }
+}
+
+void fetchAndDisplayPattern() {
+  WiFiClient client;
+  Serial.println("Conectando ao servidor...");
+  
+  if (client.connect(server, port)) {
+    Serial.println("Conectado! Enviando requisição...");
+
+    client.println("GET /api/designs/current_display/ HTTP/1.1");
+    client.println("Host: " + String(server));
+    client.println("Connection: close");
+    client.println();
+
+    bool jsonStarted = false;
+    String payload;
+    
+    while (client.connected() || client.available()) {
+      String line = client.readStringUntil('\n');
+      
+      if (line.startsWith("{")) {
+        jsonStarted = true;
+      }
+      
+      if (jsonStarted) {
+        payload += line;
+      }
+      
+      if (line == "\r" && !jsonStarted) {
+        jsonStarted = true; 
+      }
+      
+      if (!client.available() && jsonStarted) {
+        break;
+      }
+    }
+    
+    client.stop();
+    Serial.println("Resposta recebida:");
+    Serial.println(payload);
+
+    DynamicJsonDocument doc(4096);
+    DeserializationError error = deserializeJson(doc, payload);
+    
+    if (error) {
+      Serial.print("Erro no JSON: ");
+      Serial.println(error.c_str());
+      showErrorAnimation();
+      return;
+    }
+
+    if (!doc["status"].is<String>() || doc["status"] != "success") {
+      Serial.println("Erro no servidor: " + doc["message"].as<String>());
+      showErrorAnimation();
+      return;
+    }
+
+    matrix.fillScreen(0);
+    JsonArray pixels = doc["pixels"];
+    
+    for (JsonObject pixel : pixels) {
+      int row = pixel["row"];
+      int col = pixel["col"];
+      String colorHex = pixel["color"];
+ 
+      long color = strtol(colorHex.c_str(), NULL, 16);
+      int r = (color >> 16) & 0xFF;
+      int g = (color >> 8) & 0xFF;
+      int b = color & 0xFF;
+      
+      matrix.drawPixel(col, row, matrix.Color(r, g, b));
+    }
+    
+    matrix.show();
+    Serial.println("Matriz atualizada com sucesso!");
+    
+  } else {
+    Serial.println("Falha na conexão com o servidor");
+    showErrorAnimation();
+  }
+}
+
+void startupAnimation() {
+  for (int i = 0; i < MATRIX_WIDTH; i++) {
+    matrix.drawPixel(i, 0, matrix.Color(50, 0, 0));
+    matrix.drawPixel(0, i, matrix.Color(0, 50, 0));
+    matrix.drawPixel(i, MATRIX_HEIGHT-1, matrix.Color(0, 0, 50));
+    matrix.drawPixel(MATRIX_WIDTH-1, i, matrix.Color(50, 50, 0));
+    matrix.show();
+    delay(30);
+  }
+  matrix.fillScreen(0);
+  matrix.show();
+}
+
+void showErrorAnimation() {
+  for (int i = 0; i < 3; i++) {
+    matrix.fillScreen(matrix.Color(50, 0, 0));
+    matrix.show();
+    delay(300);
+    matrix.fillScreen(0);
+    matrix.show();
+    delay(300);
+  }
 }
